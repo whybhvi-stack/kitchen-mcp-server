@@ -1,41 +1,72 @@
 # Kitchen MCP Server
 
-An open-source **MCP (Model Context Protocol) server** that exposes kitchen tools
-(pantry, recipes, shopping list, timers) over **Streamable HTTP**.
-
-It is the companion to [Kitchen Copilot](https://github.com/whybhvi-stack/kitchen-copilot),
-a simulated Alexa+ cooking assistant built for the Amazon Developer Hackathon.
-Kitchen Copilot's in-browser tool layer mirrors these tools; this repo packages them
-as a real, standalone MCP server that any MCP client can call.
+A small MCP server for pantry tracking, recipe suggestions, shopping lists, and timers.
+It runs in either Streamable HTTP mode or stdio mode, so it can work with local MCP clients or a simple HTTP client.
 
 ## Tools
 
 | Tool | Purpose |
 |---|---|
-| `get_pantry` | List pantry items with days until expiry |
+| `get_pantry` | List pantry items with quantities and expiry information |
 | `add_pantry_item` | Add or update a pantry item |
-| `get_expiring_items` | Items expiring within N days |
-| `suggest_recipes` | Recipes ranked by what you already have, with missing ingredients |
-| `get_recipe_steps` | Ingredients and steps for a recipe |
-| `add_to_shopping_list` | Add one item to the list |
-| `get_shopping_list` | Read the list |
-| `start_timer` | Start a labelled timer |
+| `get_expiring_items` | Show items expiring within a given number of days |
+| `suggest_recipes` | Rank recipes by what the user already has |
+| `get_recipe_steps` | Get ingredients and steps for a recipe |
+| `add_to_shopping_list` | Add one item to the shopping list |
+| `get_shopping_list` | Read the shopping list |
+| `start_timer` | Start a labelled kitchen timer |
 
-## Run it
+## Requirements
 
-Requires Node.js 20.19+ (or 22.12+).
+Requires Node.js 20.19 or newer.
+
+## Build
 
 ```bash
 npm install
+npm run build
+```
+
+## Run modes
+
+### HTTP mode
+
+```bash
 npm start
 ```
 
-The server listens on `http://127.0.0.1:3000/mcp` (override with `PORT` and `HOST`).
-It binds to localhost by default.
+The server listens on `http://127.0.0.1:3000/mcp` by default. You can override it with `PORT` and `HOST` environment variables.
+
+### Stdio mode
+
+```bash
+npm run start:stdio
+```
+
+This mode is meant for MCP clients that launch the server over standard input and output.
+
+## Example stdio MCP client config
+
+```json
+{
+  "mcpServers": {
+    "kitchen": {
+      "command": "node",
+      "args": ["dist/stdio.js"]
+    }
+  }
+}
+```
 
 ## Try it
 
-In a second terminal, run the included client:
+In one terminal:
+
+```bash
+npm start
+```
+
+In another terminal:
 
 ```bash
 npm run test:smoke
@@ -43,48 +74,32 @@ npm run test:smoke
 
 It connects, lists the 8 tools, and calls several of them.
 
-You can also connect any MCP client that supports Streamable HTTP, for example the
-MCP Inspector:
-
-```bash
-npx @modelcontextprotocol/inspector
-```
-
-Choose the Streamable HTTP transport and enter `http://127.0.0.1:3000/mcp`.
+You can also use the MCP Inspector with the Streamable HTTP transport at `http://127.0.0.1:3000/mcp`.
 
 ## How it works
 
-- Built with the official TypeScript SDK, `@modelcontextprotocol/sdk` **v1.32.1**
-  (protocol version 2025-11-25).
-- Stateless Streamable HTTP: each POST to `/mcp` gets a fresh MCP server and transport.
-- Tool inputs are validated with zod. Errors come back as MCP error results.
-- Kitchen data is held in memory in `kitchen.ts`, shared across requests.
-
-```
-MCP client ──POST /mcp──► Express ──► StreamableHTTPServerTransport
-                                          │
-                                          ▼
-                                   McpServer (tools.ts)
-                                          │
-                                          ▼
-                                 kitchen.ts (shared state)
-```
+- Built with the official TypeScript SDK, `@modelcontextprotocol/sdk` version `1.32.1`.
+- HTTP mode uses Express and a stateless Streamable HTTP transport.
+- Stdio mode uses `StdioServerTransport` for local MCP clients.
+- Tool inputs are validated with zod and errors are returned as MCP error results.
+- Kitchen state is held in memory in `src/kitchen.ts` and resets when the server restarts.
 
 ## Limitations
 
-- Data is in memory and resets when the server restarts.
-- No authentication: it is meant for local use and binds to `127.0.0.1` by default.
-- Stateless mode only: there are no sessions and no server-to-client streaming.
+- Data is kept in memory only and resets when the process restarts.
+- There is no authentication and it is intended for local use.
+- The server binds to `127.0.0.1` by default in HTTP mode.
 
 ## Project structure
 
-```
+```text
 src/
-  server.ts       Express app and Streamable HTTP transport
-  tools.ts        MCP tool registrations (zod schemas)
-  kitchen.ts      domain logic and in-memory state
-  smoke-test.ts   MCP client that exercises the server
-  data/           seed pantry and recipes
+  server.ts        Express app for Streamable HTTP mode
+  stdio.ts         Stdio transport entry point
+  tools.ts         MCP tool registrations and zod validation
+  kitchen.ts       Kitchen logic and in-memory state
+  smoke-test.ts    Local smoke test client
+  data/            Seed pantry and recipe data
 ```
 
 ## License
