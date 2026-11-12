@@ -7,8 +7,9 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "dev": "tsx watch src/server.ts",
-    "test": "npm run typecheck && npm run build",
+    "test": "npm run typecheck && npm run build && npm run test:db && npm run test:tools",
     "test:db": "npm run build && tsx --test tests-db/*.test.ts",
+    "test:tools": "npm run build && tsx --test tests-tools/*.test.ts",
     "test:smoke": "tsx src/smoke-test.ts",
     "typecheck": "tsc --noEmit",
     "start:stdio": "node dist/stdio.js"

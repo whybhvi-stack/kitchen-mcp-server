@@ -1,5 +1,8 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import { initDatabase } from "./db/index.js";
+import * as pantryRepo from "./db/pantryRepo.js";
+import * as shoppingRepo from "./db/shoppingRepo.js";
 import * as kitchen from "./kitchen.js";
 
 type ToolResult = { content: { type: "text"; text: string }[]; isError?: boolean };
@@ -38,13 +41,27 @@ function safe(fn: () => unknown): ToolResult {
   }
 }
 
+function safeDb(fn: () => unknown): ToolResult {
+  try {
+    initDatabase();
+    return ok(fn());
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    console.error(message);
+    return {
+      isError: true,
+      content: [{ type: "text", text: "Could not save to the kitchen database. Try again." }],
+    };
+  }
+}
+
 export function buildServer(): McpServer {
   const server = new McpServer({ name: "kitchen-mcp-server", version: "1.0.0" });
 
   server.registerTool(
     "get_pantry",
     { title: "Get pantry", description: "List everything in the pantry with quantities and days until expiry." },
-    async () => safe(() => kitchen.getPantry()),
+    async () => safeDb(() => pantryRepo.getPantry()),
   );
 
   server.registerTool(
@@ -58,7 +75,17 @@ export function buildServer(): McpServer {
         expiry: expirySchema.optional().describe("Optional expiry date as YYYY-MM-DD"),
       },
     },
-    async ({ name, quantity, expiry }) => safe(() => kitchen.addPantryItem(name, quantity, expiry)),
+    async ({ name, quantity, expiry }) => safeDb(() => pantryRepo.addPantryItem(name, quantity, expiry)),
+  );
+
+  server.registerTool(
+    "remove_pantry_item",
+    {
+      title: "Remove pantry item",
+      description: "Remove a pantry item by name. Returns an error if the item is not present.",
+      inputSchema: { name: trimmedName("name").describe("Pantry item name to remove") },
+    },
+    async ({ name }) => safeDb(() => pantryRepo.removePantryItem(name)),
   );
 
   server.registerTool(
@@ -68,7 +95,7 @@ export function buildServer(): McpServer {
       description: "List pantry items that expire within the given number of days, soonest first.",
       inputSchema: { days: z.number().int().min(0).max(365).optional().describe("Look-ahead window in days (default 3)") },
     },
-    async ({ days }) => safe(() => kitchen.getExpiringItems(days)),
+    async ({ days }) => safeDb(() => pantryRepo.getExpiringItems(days)),
   );
 
   server.registerTool(
@@ -81,7 +108,7 @@ export function buildServer(): McpServer {
         diet: z.enum(["any", "vegetarian", "vegan"]).optional().describe("Dietary filter"),
       },
     },
-    async ({ max_time_minutes, diet }) => safe(() => kitchen.suggestRecipes(max_time_minutes, diet)),
+    async ({ max_time_minutes, diet }) => safeDb(() => pantryRepo.suggestRecipes(max_time_minutes, diet)),
   );
 
   server.registerTool(
@@ -98,19 +125,49 @@ export function buildServer(): McpServer {
     "add_to_shopping_list",
     {
       title: "Add to shopping list",
-      description: "Add one item to the shopping list. Call once per item.",
+      description: "Add one item to the shopping list. If the item was bought earlier, it is reactivated and no duplicate rows are created.",
       inputSchema: {
         item: trimmedName("item").describe("Item name, e.g. 'parmesan'"),
         quantity: z.string().trim().max(50).optional().describe("Optional quantity"),
       },
     },
-    async ({ item, quantity }) => safe(() => kitchen.addToShoppingList(item, quantity)),
+    async ({ item, quantity }) => safeDb(() => shoppingRepo.addToShoppingList(item, quantity)),
   );
 
   server.registerTool(
     "get_shopping_list",
-    { title: "Get shopping list", description: "Return everything currently on the shopping list." },
-    async () => safe(() => kitchen.getShoppingList()),
+    {
+      title: "Get shopping list",
+      description: "Return the shopping list filtered by status. Default is pending.",
+      inputSchema: {
+        status: z.enum(["pending", "bought", "all"]).optional().describe("Filter by status; default pending"),
+      },
+    },
+    async ({ status }) => safeDb(() => shoppingRepo.getShoppingList(status ?? "pending")),
+  );
+
+  server.registerTool(
+    "update_shopping_item",
+    {
+      title: "Update shopping item",
+      description: "Update the quantity or status of an existing shopping item.",
+      inputSchema: {
+        item: trimmedName("item").describe("Shopping item name to update"),
+        quantity: z.string().trim().max(50).optional().describe("New quantity for the item"),
+        status: z.enum(["pending", "bought"]).optional().describe("New status for the item"),
+      },
+    },
+    async ({ item, quantity, status }) => safeDb(() => shoppingRepo.updateShoppingItem(item, quantity, status)),
+  );
+
+  server.registerTool(
+    "remove_from_shopping_list",
+    {
+      title: "Remove from shopping list",
+      description: "Remove a shopping list item by name. Returns an error if the item is not present.",
+      inputSchema: { item: trimmedName("item").describe("Shopping item name to remove") },
+    },
+    async ({ item }) => safeDb(() => shoppingRepo.removeFromShoppingList(item)),
   );
 
   server.registerTool(

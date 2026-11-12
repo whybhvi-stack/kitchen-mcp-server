@@ -138,3 +138,5 @@ The design keeps the implementation simple and safe:
 - explicit migrations with rollback safety
 - no changes to the MCP tool names or tool behavior yet
 - a clear path for future persistent storage without changing the public API
+
+Phase 3 and 4 done: pantry and shopping list data now persist in SQLite, while timers remain in memory for now.

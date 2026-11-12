@@ -9,11 +9,14 @@ It runs in either Streamable HTTP mode or stdio mode, so it can work with local 
 |---|---|
 | `get_pantry` | List pantry items with quantities and expiry information |
 | `add_pantry_item` | Add or update a pantry item |
+| `remove_pantry_item` | Remove a pantry item by name |
 | `get_expiring_items` | Show items expiring within a given number of days |
 | `suggest_recipes` | Rank recipes by what the user already has |
 | `get_recipe_steps` | Get ingredients and steps for a recipe |
 | `add_to_shopping_list` | Add one item to the shopping list |
-| `get_shopping_list` | Read the shopping list |
+| `get_shopping_list` | Read the shopping list, optionally filtered by status |
+| `update_shopping_item` | Update quantity or status for a shopping item |
+| `remove_from_shopping_list` | Remove a shopping item by name |
 | `start_timer` | Start a labelled kitchen timer |
 
 ## Requirements
@@ -56,6 +59,8 @@ npm start
 
 The server listens on `http://127.0.0.1:3000/mcp` by default. You can override it with `PORT` and `HOST` environment variables.
 
+Pantry and shopping list data are persisted between restarts in SQLite. Timers still reset when the process restarts for now.
+
 ### Stdio mode
 
 ```bash
@@ -95,7 +100,7 @@ In another terminal:
 npm run test:smoke
 ```
 
-It connects, lists the 8 tools, and calls several of them.
+It connects, lists the 11 tools, and calls several of them.
 
 You can also use the MCP Inspector with the Streamable HTTP transport at `http://127.0.0.1:3000/mcp`.
 
@@ -105,11 +110,12 @@ You can also use the MCP Inspector with the Streamable HTTP transport at `http:/
 - HTTP mode uses Express and a stateless Streamable HTTP transport.
 - Stdio mode uses `StdioServerTransport` for local MCP clients.
 - Tool inputs are validated with zod and errors are returned as MCP error results.
-- Kitchen state is held in memory in `src/kitchen.ts` and resets when the server restarts.
+- Pantry and shopping data are stored in SQLite and persist across restarts.
+- Timer state is still held in memory in `src/kitchen.ts` and resets when the server restarts.
 
 ## Limitations
 
-- Data is kept in memory only and resets when the process restarts.
+- Timers are kept in memory and reset when the process restarts.
 - There is no authentication and it is intended for local use.
 - The server binds to `127.0.0.1` by default in HTTP mode.
 
