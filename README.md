@@ -18,7 +18,26 @@ It runs in either Streamable HTTP mode or stdio mode, so it can work with local 
 
 ## Requirements
 
-Requires Node.js 20.19 or newer.
+Requires Node.js 24.15+.
+
+## Database settings
+
+The server stores SQLite data in a file named `kitchen.db` under a `.kitchen-mcp-server` folder in the user's home directory by default.
+
+- Unix-like systems: `~/.kitchen-mcp-server/kitchen.db`
+- Windows: `%USERPROFILE%\.kitchen-mcp-server\kitchen.db`
+
+You can override this with `KITCHEN_DB_PATH`.
+
+```bash
+KITCHEN_DB_PATH=/path/to/my-kitchen.db npm start
+```
+
+You can also turn on a one-time demo pantry seed for a new empty database:
+
+```bash
+KITCHEN_SEED_DEMO=true npm start
+```
 
 ## Build
 
@@ -44,6 +63,10 @@ npm run start:stdio
 ```
 
 This mode is meant for MCP clients that launch the server over standard input and output.
+
+## Back up your data
+
+Stop the server cleanly, then copy `kitchen.db` together with any `kitchen.db-wal` and `kitchen.db-shm` files that exist next to it. When you want to restore it, point `KITCHEN_DB_PATH` at the saved file.
 
 ## Example stdio MCP client config
 
