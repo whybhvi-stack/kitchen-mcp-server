@@ -3,12 +3,13 @@ import type { Request, Response } from "express";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { buildServer } from "./tools.js";
 
-const PORT = Number(process.env.PORT ?? 3000);
+const rawPort = Number(process.env.PORT ?? 3000);
+const PORT = Number.isInteger(rawPort) && rawPort > 0 ? rawPort : 3000;
 // Bind to localhost only, so the server isn't exposed to your network by default.
-const HOST = process.env.HOST ?? "127.0.0.1";
+const HOST = typeof process.env.HOST === "string" && process.env.HOST.trim() ? process.env.HOST.trim() : "127.0.0.1";
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: "100kb" }));
 
 // Stateless Streamable HTTP: a fresh MCP server + transport for each request.
 app.post("/mcp", async (req: Request, res: Response) => {

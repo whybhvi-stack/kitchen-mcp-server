@@ -1,5 +1,5 @@
-   import { daysFromNow } from "../lib/dates";
-   import type { PantryItem } from "../types";
+   import { daysFromNow } from "../lib/dates.js";
+   import type { PantryItem } from "../types.js";
 
    // A function (not a constant) so expiry dates are relative to "today" on load.
    export const seedPantry = (): PantryItem[] => [

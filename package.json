@@ -1,19 +1,32 @@
 {
   "name": "kitchen-mcp-server",
   "version": "1.0.0",
-  "description": "MCP server (Streamable HTTP) for kitchen tools",
-  "main": "index.js",
+  "description": "Kitchen MCP server for pantry, recipes, shopping, and timer tools.",
+  "main": "dist/server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "tsx src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
     "dev": "tsx watch src/server.ts",
+    "test": "npm run typecheck && npm run build",
     "test:smoke": "tsx src/smoke-test.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "start:stdio": "node dist/stdio.js"
   },
-  "keywords": [],
+  "keywords": ["mcp", "kitchen", "pantry", "recipes"],
   "author": "",
   "license": "MIT",
   "type": "module",
+  "engines": {
+    "node": ">=20.19"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "bin": {
+    "kitchen-mcp-server": "dist/stdio.js"
+  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.1",
     "express": "^5.3.0",
