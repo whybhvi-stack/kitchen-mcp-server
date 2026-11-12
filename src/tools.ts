@@ -44,7 +44,11 @@ function safe(fn: () => unknown): ToolResult {
 function safeDb(fn: () => unknown): ToolResult {
   try {
     initDatabase();
-    return ok(fn());
+    const value = fn();
+    if (value instanceof Promise) {
+      throw new Error("Database function returned a Promise instead of a value.");
+    }
+    return ok(value);
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     console.error(message);
