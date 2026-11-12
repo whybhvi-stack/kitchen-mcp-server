@@ -8,6 +8,7 @@
     "start": "node dist/server.js",
     "dev": "tsx watch src/server.ts",
     "test": "npm run typecheck && npm run build",
+    "test:db": "npm run build && tsx --test tests-db/*.test.ts",
     "test:smoke": "tsx src/smoke-test.ts",
     "typecheck": "tsc --noEmit",
     "start:stdio": "node dist/stdio.js"
@@ -17,7 +18,7 @@
   "license": "MIT",
   "type": "module",
   "engines": {
-    "node": ">=20.19"
+    "node": ">=24.15"
   },
   "files": [
     "dist",

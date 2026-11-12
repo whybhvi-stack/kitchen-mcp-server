@@ -1,6 +1,7 @@
 import express from "express";
 import type { Request, Response } from "express";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { initDatabase } from "./db/index.js";
 import { buildServer } from "./tools.js";
 
 const rawPort = Number(process.env.PORT ?? 3000);
@@ -49,6 +50,13 @@ app.get("/health", (_req: Request, res: Response) => {
   res.json({ status: "ok", name: "kitchen-mcp-server" });
 });
 
-app.listen(PORT, HOST, () => {
-  console.log(`Kitchen MCP server listening on http://${HOST}:${PORT}/mcp`);
-});
+try {
+  initDatabase();
+  app.listen(PORT, HOST, () => {
+    console.log(`Kitchen MCP server listening on http://${HOST}:${PORT}/mcp`);
+  });
+} catch (error) {
+  const message = error instanceof Error ? error.message : String(error);
+  console.error(message);
+  process.exit(1);
+}
