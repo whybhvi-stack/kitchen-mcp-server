@@ -84,7 +84,7 @@ export function getExpiringItems(days = 3): { within_days: number; items: Array<
   return { within_days: days, items };
 }
 
-export async function suggestRecipes(maxTimeMinutes?: number, diet: "any" | "vegetarian" | "vegan" = "any") {
+export function suggestRecipes(maxTimeMinutes?: number, diet: "any" | "vegetarian" | "vegan" = "any") {
   const db = getDb();
   const pantryRows = db.prepare("SELECT name FROM pantry_items").all() as Array<{ name: string }>;
   const have = new Set(pantryRows.map((row) => row.name));
