@@ -53,7 +53,7 @@ app.get("/health", (_req: Request, res: Response) => {
 try {
   initDatabase();
   app.listen(PORT, HOST, () => {
-    console.log(`Kitchen MCP server listening on http://${HOST}:${PORT}/mcp`);
+    console.error(`Kitchen MCP server listening on http://${HOST}:${PORT}/mcp`);
   });
 } catch (error) {
   const message = error instanceof Error ? error.message : String(error);

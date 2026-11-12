@@ -16,9 +16,8 @@ export function resolveDatabasePath(rawPath = process.env.KITCHEN_DB_PATH): stri
 
     try {
       fs.mkdirSync(defaultDir, { recursive: true });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      throw new DatabaseError(`Could not create the SQLite folder for the database: ${defaultDir}. ${message}`, defaultFile);
+    } catch {
+      throw new DatabaseError("Could not create the SQLite folder for the database. Try again.", defaultFile);
     }
 
     return defaultFile;
@@ -33,9 +32,8 @@ export function resolveDatabasePath(rawPath = process.env.KITCHEN_DB_PATH): stri
   if (resolved !== ":memory:") {
     try {
       fs.mkdirSync(path.dirname(resolved), { recursive: true });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      throw new DatabaseError(`Could not create the SQLite folder for the database: ${path.dirname(resolved)}. ${message}`, resolved);
+    } catch {
+      throw new DatabaseError("Could not create the SQLite folder for the database. Try again.", resolved);
     }
   }
 
@@ -59,9 +57,8 @@ export function getDb(databasePath = resolveDatabasePath()): DatabaseSync {
     db.exec("PRAGMA journal_mode = WAL;");
     db.exec("PRAGMA foreign_keys = ON;");
     db.exec("PRAGMA busy_timeout = 5000;");
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    throw new DatabaseError(`Could not open SQLite database at ${databasePath}: ${message}`, databasePath);
+  } catch {
+    throw new DatabaseError("Could not open the kitchen database. Try again.", databasePath);
   }
 
   return db;
