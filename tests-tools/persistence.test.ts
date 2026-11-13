@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -16,7 +15,10 @@ import { daysFromNow } from "../src/lib/dates.ts";
 const repoRoot = path.resolve(import.meta.dirname ?? __dirname, "..");
 
 function makeTempDb() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "kitchen-tools-"));
+  const repoRoot = path.resolve(import.meta.dirname ?? __dirname, "..");
+  const tempRoot = path.join(repoRoot, ".tmp-persistence-tests");
+  fs.mkdirSync(tempRoot, { recursive: true });
+  const dir = fs.mkdtempSync(path.join(tempRoot, "kitchen-tools-"));
   const file = path.join(dir, "kitchen.db");
   return { dir, file };
 }

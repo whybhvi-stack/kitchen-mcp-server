@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { DatabaseSync } from "node:sqlite";
@@ -92,7 +91,10 @@ test("failed migration rolls back", () => {
 });
 
 test("file database keeps its data after close and reopen", () => {
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "kitchen-db-"));
+  const repoRoot = path.resolve(import.meta.dirname ?? __dirname, "..");
+  const tempRoot = path.join(repoRoot, ".tmp-db-tests");
+  fs.mkdirSync(tempRoot, { recursive: true });
+  const tempDir = fs.mkdtempSync(path.join(tempRoot, "kitchen-db-"));
   const filePath = path.join(tempDir, "kitchen.db");
 
   const firstDb = getDb(filePath);

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { initDatabase } from "./db/index.js";
 import * as pantryRepo from "./db/pantryRepo.js";
 import * as shoppingRepo from "./db/shoppingRepo.js";
+import * as timerRepo from "./db/timerRepo.js";
 import * as kitchen from "./kitchen.js";
 
 type ToolResult = { content: { type: "text"; text: string }[]; isError?: boolean };
@@ -178,13 +179,37 @@ export function buildServer(): McpServer {
     "start_timer",
     {
       title: "Start timer",
-      description: "Start a kitchen timer with a label and a duration in minutes.",
+      description:
+        "Start a kitchen timer with a label and a duration in minutes. The server cannot ring or notify; call list_timers to check, and tell the user to also use a phone alarm.",
       inputSchema: {
         label: trimmedName("label").describe("What the timer is for, e.g. 'pasta'"),
         minutes: z.number().positive().max(1440).describe("Duration in minutes"),
       },
     },
-    async ({ label, minutes }) => safe(() => kitchen.startTimer(label, minutes)),
+    async ({ label, minutes }) => safeDb(() => timerRepo.startTimer(label, minutes)),
+  );
+
+  server.registerTool(
+    "list_timers",
+    {
+      title: "List timers",
+      description:
+        "List timers and their remaining time. The server cannot ring or notify; call list_timers to check, and tell the user to also use a phone alarm.",
+      inputSchema: {
+        status: z.enum(["running", "done", "cancelled", "all"]).optional().describe("Timer status filter; default running"),
+      },
+    },
+    async ({ status }) => safeDb(() => timerRepo.listTimers(status ?? "running")),
+  );
+
+  server.registerTool(
+    "cancel_timer",
+    {
+      title: "Cancel timer",
+      description: "Cancel a running timer by id. The server cannot ring or notify; call list_timers to check, and tell the user to also use a phone alarm.",
+      inputSchema: { id: trimmedName("id").describe("Timer id to cancel") },
+    },
+    async ({ id }) => safeDb(() => timerRepo.cancelTimer(id)),
   );
 
   return server;
