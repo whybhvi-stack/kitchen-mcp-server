@@ -3,7 +3,9 @@ import { z } from "zod";
 import { initDatabase } from "./db/index.js";
 import * as pantryRepo from "./db/pantryRepo.js";
 import * as shoppingRepo from "./db/shoppingRepo.js";
+import * as timerRepo from "./db/timerRepo.js";
 import * as kitchen from "./kitchen.js";
+import { UserError } from "./db/errors.js";
 
 type ToolResult = { content: { type: "text"; text: string }[]; isError?: boolean };
 
@@ -50,6 +52,9 @@ function safeDb(fn: () => unknown): ToolResult {
     }
     return ok(value);
   } catch (e) {
+    if (e instanceof UserError) {
+      return { isError: true, content: [{ type: "text", text: e.message }] };
+    }
     const message = e instanceof Error ? e.message : String(e);
     console.error(message);
     return {
@@ -60,7 +65,7 @@ function safeDb(fn: () => unknown): ToolResult {
 }
 
 export function buildServer(): McpServer {
-  const server = new McpServer({ name: "kitchen-mcp-server", version: "1.0.0" });
+  const server = new McpServer({ name: "kitchen-mcp-server", version: "1.1.0" });
 
   server.registerTool(
     "get_pantry",
@@ -106,7 +111,7 @@ export function buildServer(): McpServer {
     "suggest_recipes",
     {
       title: "Suggest recipes",
-      description: "Suggest recipes ranked by how many ingredients the user already has, listing what is missing.",
+      description: "Suggest up to 5 recipes ranked by how many ingredients the user already has (singular and plural names match, e.g. tomato and tomatoes). Each recipe lists what is missing, match_percent, and uses_expiring (pantry items that expire within 3 days and are used). Recipes that use expiring food are preferred. Call get_recipe_steps for the full instructions.",
       inputSchema: {
         max_time_minutes: z.number().int().min(1).max(1440).optional().describe("Maximum total cooking time in minutes"),
         diet: z.enum(["any", "vegetarian", "vegan"]).optional().describe("Dietary filter"),
@@ -178,13 +183,37 @@ export function buildServer(): McpServer {
     "start_timer",
     {
       title: "Start timer",
-      description: "Start a kitchen timer with a label and a duration in minutes.",
+      description:
+        "Start a kitchen timer with a label and a duration in minutes. The server cannot ring or notify; call list_timers to check, and tell the user to also use a phone alarm.",
       inputSchema: {
         label: trimmedName("label").describe("What the timer is for, e.g. 'pasta'"),
         minutes: z.number().positive().max(1440).describe("Duration in minutes"),
       },
     },
-    async ({ label, minutes }) => safe(() => kitchen.startTimer(label, minutes)),
+    async ({ label, minutes }) => safeDb(() => timerRepo.startTimer(label, minutes)),
+  );
+
+  server.registerTool(
+    "list_timers",
+    {
+      title: "List timers",
+      description:
+        "List timers and their remaining time. The server cannot ring or notify; call list_timers to check, and tell the user to also use a phone alarm.",
+      inputSchema: {
+        status: z.enum(["running", "done", "cancelled", "all"]).optional().describe("Timer status filter; default running"),
+      },
+    },
+    async ({ status }) => safeDb(() => timerRepo.listTimers(status ?? "running")),
+  );
+
+  server.registerTool(
+    "cancel_timer",
+    {
+      title: "Cancel timer",
+      description: "Cancel a running timer by id. The server cannot ring or notify; call list_timers to check, and tell the user to also use a phone alarm.",
+      inputSchema: { id: trimmedName("id").describe("Timer id to cancel") },
+    },
+    async ({ id }) => safeDb(() => timerRepo.cancelTimer(id)),
   );
 
   return server;

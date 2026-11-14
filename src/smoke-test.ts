@@ -1,5 +1,4 @@
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
@@ -7,7 +6,10 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 const url = new URL(process.env.MCP_URL ?? "http://127.0.0.1:3000/mcp");
 
 async function main() {
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "kitchen-smoke-"));
+  const repoRoot = path.resolve(import.meta.dirname ?? __dirname, "..");
+  const tempRoot = path.join(repoRoot, ".tmp-smoke-tests");
+  fs.mkdirSync(tempRoot, { recursive: true });
+  const tempDir = fs.mkdtempSync(path.join(tempRoot, "db-"));
   const databasePath = path.join(tempDir, "kitchen.db");
   process.env.KITCHEN_DB_PATH = databasePath;
 
@@ -15,8 +17,8 @@ async function main() {
   await client.connect(new StreamableHTTPClientTransport(url));
 
   const { tools } = await client.listTools();
-  if (tools.length !== 11) {
-    throw new Error(`Expected 11 tools, got ${tools.length}: ${tools.map((t) => t.name).join(", ")}`);
+  if (tools.length !== 13) {
+    throw new Error(`Expected 13 tools, got ${tools.length}: ${tools.map((t) => t.name).join(", ")}`);
   }
 
   const calls: [string, Record<string, unknown>][] = [

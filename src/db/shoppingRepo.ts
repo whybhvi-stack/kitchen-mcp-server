@@ -1,4 +1,5 @@
 import { getDb } from "./connection.js";
+import { UserError } from "./errors.js";
 
 const normalizeName = (rawItem: string): string => rawItem.trim().toLowerCase();
 
@@ -34,7 +35,7 @@ export function addToShoppingList(rawItem: string, quantity?: string): {
   const trimmedQuantity = quantity?.trim() || undefined;
 
   if (!item) {
-    throw new Error("item is required");
+    throw new UserError("item is required");
   }
 
   const existing = db.prepare("SELECT name, quantity, status FROM shopping_items WHERE name = ?").get(item) as
@@ -65,7 +66,7 @@ export function addToShoppingList(rawItem: string, quantity?: string): {
   const countRow = db.prepare("SELECT COUNT(*) AS count FROM shopping_items").get() as { count: number } | undefined;
   const count = Number(countRow?.count ?? 0);
   if (count >= SHOPPING_MAX_ITEMS) {
-    throw new Error(`Shopping list is full. Maximum of ${SHOPPING_MAX_ITEMS} items allowed.`);
+    throw new UserError(`Shopping list is full. Maximum of ${SHOPPING_MAX_ITEMS} items allowed.`);
   }
 
   const now = new Date().toISOString();
@@ -85,11 +86,11 @@ export function updateShoppingItem(
   const item = normalizeName(rawItem);
 
   if (!item) {
-    throw new Error("item is required");
+    throw new UserError("item is required");
   }
 
   if (quantity === undefined && status === undefined) {
-    throw new Error("quantity or status is required");
+    throw new UserError("quantity or status is required");
   }
 
   const existing = db.prepare("SELECT name, quantity, status FROM shopping_items WHERE name = ?").get(item) as
@@ -97,7 +98,7 @@ export function updateShoppingItem(
     | undefined;
 
   if (!existing) {
-    throw new Error(`Shopping item "${item}" was not found.`);
+    throw new UserError(`Shopping item "${item}" was not found.`);
   }
 
   const nextQuantity = typeof quantity === "string" ? quantity.trim() || null : null;
@@ -120,12 +121,12 @@ export function removeFromShoppingList(rawItem: string): { removed: string } {
   const item = normalizeName(rawItem);
 
   if (!item) {
-    throw new Error("item is required");
+    throw new UserError("item is required");
   }
 
   const result = db.prepare("DELETE FROM shopping_items WHERE name = ?").run(item);
   if (result.changes === 0) {
-    throw new Error(`Shopping item "${item}" was not found.`);
+    throw new UserError(`Shopping item "${item}" was not found.`);
   }
 
   return { removed: item };

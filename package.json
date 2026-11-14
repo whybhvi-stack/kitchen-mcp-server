@@ -1,6 +1,6 @@
 {
   "name": "kitchen-mcp-server",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Kitchen MCP server for pantry, recipes, shopping, and timer tools.",
   "main": "dist/server.js",
   "scripts": {
@@ -14,7 +14,12 @@
     "typecheck": "tsc --noEmit",
     "start:stdio": "node dist/stdio.js"
   },
-  "keywords": ["mcp", "kitchen", "pantry", "recipes"],
+  "keywords": [
+    "mcp",
+    "kitchen",
+    "pantry",
+    "recipes"
+  ],
   "author": "",
   "license": "MIT",
   "type": "module",

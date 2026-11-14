@@ -28,6 +28,9 @@ export function initDatabase(): void {
     const db = getDb();
     runMigrations(db);
 
+    const expiryCutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    db.prepare("DELETE FROM timers WHERE status IN ('done', 'cancelled') AND created_at <= ?").run(expiryCutoff);
+
     if (process.env.KITCHEN_SEED_DEMO === "true") {
       seedDemoPantry(db);
     }
