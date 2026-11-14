@@ -9,3 +9,6 @@ dist
 *.sqlite-journal
 .DS_Store
 .vscode/
+.tmp-*/
+*.db-wal
+*.db-shm

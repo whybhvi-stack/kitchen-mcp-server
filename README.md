@@ -128,7 +128,7 @@ src/
   server.ts        Express app for Streamable HTTP mode
   stdio.ts         Stdio transport entry point
   tools.ts         MCP tool registrations and zod validation
-  kitchen.ts       Kitchen logic and in-memory state
+  kitchen.ts       Recipe lookup (pantry, shopping list and timers live in src/db)
   smoke-test.ts    Local smoke test client
   data/            Seed pantry and recipe data
 ```

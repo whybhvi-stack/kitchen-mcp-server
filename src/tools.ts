@@ -5,6 +5,7 @@ import * as pantryRepo from "./db/pantryRepo.js";
 import * as shoppingRepo from "./db/shoppingRepo.js";
 import * as timerRepo from "./db/timerRepo.js";
 import * as kitchen from "./kitchen.js";
+import { UserError } from "./db/errors.js";
 
 type ToolResult = { content: { type: "text"; text: string }[]; isError?: boolean };
 
@@ -51,6 +52,9 @@ function safeDb(fn: () => unknown): ToolResult {
     }
     return ok(value);
   } catch (e) {
+    if (e instanceof UserError) {
+      return { isError: true, content: [{ type: "text", text: e.message }] };
+    }
     const message = e instanceof Error ? e.message : String(e);
     console.error(message);
     return {
@@ -61,7 +65,7 @@ function safeDb(fn: () => unknown): ToolResult {
 }
 
 export function buildServer(): McpServer {
-  const server = new McpServer({ name: "kitchen-mcp-server", version: "1.0.0" });
+  const server = new McpServer({ name: "kitchen-mcp-server", version: "1.1.0" });
 
   server.registerTool(
     "get_pantry",
@@ -107,7 +111,7 @@ export function buildServer(): McpServer {
     "suggest_recipes",
     {
       title: "Suggest recipes",
-      description: "Suggest recipes ranked by how many ingredients the user already has, listing what is missing.",
+      description: "Suggest up to 5 recipes ranked by how many ingredients the user already has (singular and plural names match, e.g. tomato and tomatoes). Each recipe lists what is missing, match_percent, and uses_expiring (pantry items that expire within 3 days and are used). Recipes that use expiring food are preferred. Call get_recipe_steps for the full instructions.",
       inputSchema: {
         max_time_minutes: z.number().int().min(1).max(1440).optional().describe("Maximum total cooking time in minutes"),
         diet: z.enum(["any", "vegetarian", "vegan"]).optional().describe("Dietary filter"),

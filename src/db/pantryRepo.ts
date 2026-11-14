@@ -1,6 +1,8 @@
 import { getDb } from "./connection.js";
 import { recipes } from "../data/recipes.js";
 import { daysUntil } from "../lib/dates.js";
+import { normalizeIngredient } from "../lib/ingredients.js";
+import { UserError } from "./errors.js";
 
 const normalizeName = (rawName: string): string => rawName.trim().toLowerCase();
 
@@ -29,11 +31,11 @@ export function addPantryItem(rawName: string, quantity: string, expiry?: string
   const trimmedExpiry = expiry?.trim() || undefined;
 
   if (!name) {
-    throw new Error("name is required");
+    throw new UserError("name is required");
   }
 
   if (!trimmedQuantity) {
-    throw new Error("quantity must not be empty");
+    throw new UserError("quantity must not be empty");
   }
 
   const existing = db.prepare("SELECT name, quantity, expiry FROM pantry_items WHERE name = ?").get(name) as
@@ -44,7 +46,7 @@ export function addPantryItem(rawName: string, quantity: string, expiry?: string
   const count = Number(countRow?.count ?? 0);
 
   if (!existing && count >= PANTRY_MAX_ITEMS) {
-    throw new Error(`Pantry is full. Maximum of ${PANTRY_MAX_ITEMS} items allowed.`);
+    throw new UserError(`Pantry is full. Maximum of ${PANTRY_MAX_ITEMS} items allowed.`);
   }
 
   const now = new Date().toISOString();
@@ -86,20 +88,47 @@ export function getExpiringItems(days = 3): { within_days: number; items: Array<
 
 export function suggestRecipes(maxTimeMinutes?: number, diet: "any" | "vegetarian" | "vegan" = "any") {
   const db = getDb();
-  const pantryRows = db.prepare("SELECT name FROM pantry_items").all() as Array<{ name: string }>;
-  const have = new Set(pantryRows.map((row) => row.name));
+  const pantryRows = db.prepare("SELECT name, expiry FROM pantry_items").all() as Array<{ name: string; expiry: string | null }>;
+  const have = new Map<string, { name: string; expiringSoon: boolean }>();
+  for (const row of pantryRows) {
+    const days = row.expiry ? daysUntil(row.expiry) : null;
+    have.set(normalizeIngredient(row.name), {
+      name: row.name,
+      expiringSoon: days !== null && days >= 0 && days <= 3,
+    });
+  }
 
   const results = recipes
     .filter((recipe) => maxTimeMinutes === undefined || recipe.timeMinutes <= maxTimeMinutes)
     .filter((recipe) => diet === "any" || (diet === "vegan" ? recipe.diet === "vegan" : recipe.diet !== "any"))
-    .map((recipe) => ({
-      id: recipe.id,
-      title: recipe.title,
-      time_minutes: recipe.timeMinutes,
-      diet: recipe.diet,
-      missing: recipe.ingredients.filter((item) => !have.has(item)),
-    }))
-    .sort((a, b) => a.missing.length - b.missing.length)
+    .map((recipe) => {
+      const missing: string[] = [];
+      const usesExpiring: string[] = [];
+      for (const ingredient of recipe.ingredients) {
+        const match = have.get(normalizeIngredient(ingredient));
+        if (!match) {
+          missing.push(ingredient);
+        } else if (match.expiringSoon) {
+          usesExpiring.push(match.name);
+        }
+      }
+      const total = recipe.ingredients.length;
+      return {
+        id: recipe.id,
+        title: recipe.title,
+        time_minutes: recipe.timeMinutes,
+        diet: recipe.diet,
+        missing,
+        uses_expiring: usesExpiring,
+        match_percent: total === 0 ? 100 : Math.round(((total - missing.length) / total) * 100),
+      };
+    })
+    .sort(
+      (a, b) =>
+        a.missing.length - b.missing.length ||
+        b.uses_expiring.length - a.uses_expiring.length ||
+        a.time_minutes - b.time_minutes,
+    )
     .slice(0, 5);
 
   return { recipes: results };
@@ -110,12 +139,12 @@ export function removePantryItem(rawName: string): { removed: string } {
   const name = normalizeName(rawName);
 
   if (!name) {
-    throw new Error("name is required");
+    throw new UserError("name is required");
   }
 
   const result = db.prepare("DELETE FROM pantry_items WHERE name = ?").run(name);
   if (result.changes === 0) {
-    throw new Error(`Pantry item "${name}" was not found.`);
+    throw new UserError(`Pantry item "${name}" was not found.`);
   }
 
   return { removed: name };

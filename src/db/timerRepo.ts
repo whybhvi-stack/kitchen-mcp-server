@@ -1,20 +1,21 @@
 import { randomUUID } from "node:crypto";
 import { getDb } from "./connection.js";
+import { UserError } from "./errors.js";
 
 const normalizeLabel = (value: string): string => {
   const trimmed = value.trim();
   if (!trimmed) {
-    throw new Error("label must not be empty");
+    throw new UserError("label must not be empty");
   }
   if (trimmed.length > 100) {
-    throw new Error("label must be 100 characters or fewer");
+    throw new UserError("label must be 100 characters or fewer");
   }
   return trimmed;
 };
 
 const ensureValidMinutes = (minutes: number): void => {
   if (!Number.isFinite(minutes) || minutes <= 0 || minutes > 1440) {
-    throw new Error("minutes must be a positive number with a maximum of 1440");
+    throw new UserError("minutes must be a positive number with a maximum of 1440");
   }
 };
 
@@ -29,7 +30,7 @@ export function startTimer(label: string, minutes: number): { id: string; label:
   ensureValidMinutes(minutes);
 
   if (listRunningCount(db) >= 50) {
-    throw new Error("Maximum of 50 running timers allowed.");
+    throw new UserError("Maximum of 50 running timers allowed.");
   }
 
   const id = randomUUID();
@@ -84,7 +85,7 @@ export function cancelTimer(id: string): { id: string; label: string; status: "c
   const trimmedId = id.trim();
 
   if (!trimmedId) {
-    throw new Error("id must not be empty");
+    throw new UserError("id must not be empty");
   }
 
   const row = db.prepare("SELECT id, label, status FROM timers WHERE id = ?").get(trimmedId) as
@@ -92,16 +93,16 @@ export function cancelTimer(id: string): { id: string; label: string; status: "c
     | undefined;
 
   if (!row) {
-    throw new Error(`Timer "${trimmedId}" was not found.`);
+    throw new UserError(`Timer "${trimmedId}" was not found.`);
   }
 
   if (row.status !== "running") {
-    throw new Error(`Timer "${trimmedId}" is not running.`);
+    throw new UserError(`Timer "${trimmedId}" is not running.`);
   }
 
   const result = db.prepare("UPDATE timers SET status = 'cancelled' WHERE id = ? AND status = 'running'").run(trimmedId);
   if (result.changes === 0) {
-    throw new Error(`Timer "${trimmedId}" is not running.`);
+    throw new UserError(`Timer "${trimmedId}" is not running.`);
   }
 
   return { id: row.id, label: row.label, status: "cancelled" };
